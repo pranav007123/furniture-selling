@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .profile-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 30px;
+        font-family: 'Arial', sans-serif;
+    }
+
+    .profile-info {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .profile-info img {
+        border-radius: 50%;
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        margin-bottom: 10px;
+    }
+
+    .btn-edit {
+        margin-top: 15px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn-edit:hover {
+        background-color: #0056b3;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        font-weight: bold;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+    }
+</style>
+
+<h2>Your Profile</h2>
+<div class="profile-container">
+    <div class="profile-info">
+        {% if user.profile.profile_picture %}
+            <img src="{{ user.profile.profile_picture.url }}" alt="Profile Picture">
+        {% else %}
+            <img src="{% static 'images/default-profile.png' %}" alt="Default Profile Picture">
+        {% endif %}
+        <p><strong>Name:</strong> {{ user.profile.full_name }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Phone Number:</strong> {{ user.profile.phone_number }}</p>
+        <p><strong>Address:</strong> {{ user.profile.address }}</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label class="form-label">Full Name:</label>
+            {{ profile_form.full_name }}
+        </div>
+        <div class="form-group">
+            <label class="form-label">Phone Number:</label>
+            {{ profile_form.phone_number }}
+        </div>
+        <div class="form-group">
+            <label class="form-label">Address:</label>
+            {{ profile_form.address }}
+        </div>
+        <div class="form-group">
+            <label class="form-label">Profile Picture:</label>
+            {{ profile_form.profile_picture }}
+        </div>
+        <button type="submit" class="btn-edit">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

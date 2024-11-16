@@ -13,31 +13,36 @@
   {% block content %}
 
   <!-- Category Header -->
-  <div class="bg-dark text-white text-center py-5">
-    <h1>{{ category.name }}</h1>
-  </div>
-
-  <!-- Products Grid Section -->
-  <div class="container mt-4">
-    <div class="row justify-content-center">
-      {% for product in products %}
-      <div class="col-md-3 col-sm-6 mb-4">
-        <div class="card h-100 shadow-sm">
-          <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
-          <div class="card-body text-center">
-            <h5 class="card-title">{{ product.name }}</h5>
-            <p class="card-text">${{ product.price }}</p>
-            <a href="{% url 'product_detail' product.id %}" class="btn btn-primary">View Details</a>
-
+ 
+    <div class="bg-dark text-white text-center py-2">
+      <h1>{{ category.name }}</h1>
+    </div>
+  
+    <!-- Products Grid Section -->
+     
+   <div class="p-5">
+      <div class="container mt-4">
+        <div class="row justify-content-center">
+          {% for product in products %}
+          <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card h-100 shadow-sm">
+              <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+              <div class="card-body text-center">
+                <h5 class="card-title">{{ product.name }}</h5>
+                <p class="card-text">${{ product.price }}</p>
+                <a href="{% url 'product_detail' product.id %}" class="btn btn-primary">View Details</a>
+    
+              </div>
+            </div>
           </div>
+          {% empty %}
+          <p class="text-center">No products available in this category.</p>
+          {% endfor %}
         </div>
       </div>
-      {% empty %}
-      <p class="text-center">No products available in this category.</p>
-      {% endfor %}
-    </div>
-  </div>
-
+   </div>
+  
+ 
   {% endblock %}
 </body>
 </html>

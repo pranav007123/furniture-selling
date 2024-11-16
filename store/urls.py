@@ -20,5 +20,8 @@ urlpatterns = [
     path('process_order/', views.process_order, name='process_order'),
     path('order_success/', views.order_success, name='order_success'), 
     path('my-orders/', views.user_orders, name='user_orders'),
+    path('profile/', views.profile_view, name='profile'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+
 ]
 

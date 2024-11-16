@@ -7,6 +7,10 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.http import HttpResponse
+from .models import Profile
+from .forms import ProfileForm  
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
 
 
 
@@ -57,31 +61,71 @@ def logout_view(request):
 
 
 
-# Register view
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.contrib import messages
+import re
+
 def register(request):
     if request.method == 'POST':
-        username = request.POST['username']
-        email = request.POST['email']
-        password = request.POST['password']
-        confirm_password = request.POST['confirm_password']
-        
-        if password == confirm_password:
-            if User.objects.filter(username=username).exists():
-                messages.error(request, "Username is already taken.")
-            elif User.objects.filter(email=email).exists():
-                messages.error(request, "Email is already registered.")
-            else:
-                user = User.objects.create_user(username=username, email=email, password=password)
-                user.save()
-                messages.success(request, "Account created successfully! You can log in now.")
-                return redirect('login')
-        else:
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
+
+        # Validation Checks
+        if not username or not email or not password or not confirm_password:
+            messages.error(request, "All fields are required.")
+            return render(request, 'register.html')
+
+        if len(username) < 3:
+            messages.error(request, "Username must be at least 3 characters long.")
+            return render(request, 'register.html')
+
+        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        if not re.match(email_regex, email):
+            messages.error(request, "Enter a valid email address.")
+            return render(request, 'register.html')
+
+        if len(password) < 8:
+            messages.error(request, "Password must be at least 8 characters long.")
+            return render(request, 'register.html')
+
+        if not re.search(r'[A-Z]', password):
+            messages.error(request, "Password must contain at least one uppercase letter.")
+            return render(request, 'register.html')
+
+        if not re.search(r'[0-9]', password):
+            messages.error(request, "Password must contain at least one number.")
+            return render(request, 'register.html')
+
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Password must contain at least one special character.")
+            return render(request, 'register.html')
+
+        if password != confirm_password:
             messages.error(request, "Passwords do not match.")
+            return render(request, 'register.html')
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Username is already taken.")
+            return render(request, 'register.html')
+
+        if User.objects.filter(email=email).exists():
+            messages.error(request, "Email is already registered.")
+            return render(request, 'register.html')
+
+        # Create user if all validations pass
+        user = User.objects.create_user(username=username, email=email, password=password)
+        user.save()
+        messages.success(request, "Account created successfully! You can log in now.")
+        return redirect('login')
+
     return render(request, 'register.html')
 
 
 
-
+@login_required(login_url='login')
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -102,6 +146,7 @@ def add_to_cart(request, product_id):
 
 
 # View to display the cart and its items
+@login_required(login_url='login')
 def view_cart(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = cart.items.all()
@@ -115,6 +160,7 @@ def view_cart(request):
 
 
 # View to update the quantity of an item in the cart
+@login_required
 def update_cart(request, item_id):
     if request.method == 'POST':
         cart_item = get_object_or_404(CartItem, id=item_id)
@@ -137,6 +183,7 @@ def update_cart(request, item_id):
 
 
 # View to remove an item from the cart
+@login_required
 def remove_from_cart(request, item_id):
     cart_item = get_object_or_404(CartItem, id=item_id)
     cart_item.delete()
@@ -158,7 +205,6 @@ def checkout(request):
 
 
 @login_required
-
 def process_order(request):
     if request.method == "POST":
         print("Process Order view is being called")  # Debugging line
@@ -244,3 +290,40 @@ def user_orders(request):
     # Fetch all orders for the logged-in user
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'user_orders.html', {'orders': orders})
+
+
+@login_required(login_url='login')
+def profile_view(request):
+    profile = request.user.profile
+
+    if request.method == "POST":
+        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
+        if profile_form.is_valid():
+            profile_form.save()
+            messages.success(request, "Profile updated successfully.")
+            return redirect('profile')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        profile_form = ProfileForm(instance=profile)
+
+    return render(request, 'profile.html', {'profile_form': profile_form})
+
+
+from django.utils.crypto import get_random_string
+from django.contrib import messages
+
+def forgot_password(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+        try:
+            user = User.objects.get(email=email)
+            # Generate a new random password
+            new_password = get_random_string(length=10)  # Adjust length as needed
+            user.set_password(new_password)
+            user.save()
+            # Display the new password on the screen
+            return render(request, 'password_reset_confirmation.html', {'new_password': new_password})
+        except User.DoesNotExist:
+            messages.error(request, "User with this email does not exist.")
+    return render(request, 'forgot_password.html')
