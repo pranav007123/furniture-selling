@@ -43,10 +43,10 @@
             {% endfor %}
         </tbody>
     </table>
-    <div class="cart-footer">
+    <div class="cart-footer m-2">
         <h4>Total: ${{ total_price }}</h4>
         <!-- Updated Checkout Link -->
-        <a href="{% url 'checkout' %}" class="btn btn-primary">Proceed to Checkout</a>
+        <a href="{% url 'checkout' %}" class="btn btn-success">Proceed to Checkout</a>
     </div>
 </div>
 {% endblock %}
