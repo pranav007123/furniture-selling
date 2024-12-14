@@ -3,14 +3,11 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from .models import Category, Product, Cart, CartItem, Order, OrderItem
-from django.utils import timezone
 from django.contrib.auth.decorators import login_required
-from django.urls import reverse
-from django.http import HttpResponse
-from .models import Profile
 from .forms import ProfileForm  
-from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth import update_session_auth_hash
+
+from django.utils.crypto import get_random_string
+
 
 
 
@@ -33,24 +30,51 @@ def product_detail(request, product_id):
 
 
 
-# Login view
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from store.models import Profile  # Import your Profile model
+
 def login_view(request):
     if request.method == 'POST':
-        email = request.POST['email']
-        password = request.POST['password']
+        identifier = request.POST.get('identifier')  # Field for either email or username
+        password = request.POST.get('password')
         
-        try:
-            user = User.objects.get(email=email)
-            user = authenticate(request, username=user.username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('home')
-            else:
-                messages.error(request, "Invalid email or password.")
-        except User.DoesNotExist:
-            messages.error(request, "Invalid email or password.")
+        user = None
+
+        # Check if the identifier is an email
+        if "@" in identifier and "." in identifier:
+            try:
+                # Try to fetch the user by email
+                user_obj = User.objects.get(email=identifier)
+                user = authenticate(request, username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                pass  # User will remain None if no user with this email exists
+        else:
+            # Treat identifier as a username
+            user = authenticate(request, username=identifier, password=password)
+        
+        if user is not None:
+            # Ensure a Profile exists for the user
+            if not hasattr(user, 'profile'):
+                Profile.objects.create(user=user)  # Create a Profile for the user if missing
+
+            login(request, user)
+
+            # Redirect staff/admin users to the Django admin panel
+            if user.is_staff:
+                return redirect('/admin/')
+            
+            # Redirect regular users to the home page
+            return redirect('home')
+        else:
+            messages.error(request, "Invalid email/username or password.")
     
     return render(request, 'login.html')
+
+
+
 
 
 # Logout view
@@ -65,6 +89,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib import messages
 import re
+from .models import Profile
+
 
 def register(request):
     if request.method == 'POST':
@@ -114,6 +140,8 @@ def register(request):
         if User.objects.filter(email=email).exists():
             messages.error(request, "Email is already registered.")
             return render(request, 'register.html')
+        
+
 
         # Create user if all validations pass
         user = User.objects.create_user(username=username, email=email, password=password)
@@ -125,6 +153,8 @@ def register(request):
 
 
 
+from django.contrib import messages
+
 @login_required(login_url='login')
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
@@ -133,14 +163,18 @@ def add_to_cart(request, product_id):
     # Get or create a cart item for the product
     cart_item, item_created = CartItem.objects.get_or_create(cart=cart, product=product)
     
-    # Set quantity to 1 if new, otherwise increase by 1
+    # Validate stock before increasing quantity
     if item_created:
         cart_item.quantity = 1
     else:
+        if cart_item.quantity + 1 > product.stock:  # Assuming `stock` is the field for available stock
+            messages.error(request, f"Cannot add more than {product.stock} of {product.name} to the cart.")
+            return redirect('view_cart')
         cart_item.quantity += 1
 
     cart_item.save()
     return redirect('view_cart')
+
 
 
 
@@ -159,15 +193,20 @@ def view_cart(request):
     return render(request, 'cart.html', context)
 
 
+
 # View to update the quantity of an item in the cart
-@login_required
+@login_required(login_url='login')
 def update_cart(request, item_id):
     if request.method == 'POST':
         cart_item = get_object_or_404(CartItem, id=item_id)
+        product = cart_item.product  # Access the related product
         action = request.POST.get('action')
 
         # Increase or decrease quantity based on action
         if action == 'increase':
+            if cart_item.quantity + 1 > product.stock:
+                messages.error(request, f"Only {product.stock} of {product.name} are available.")
+                return redirect('view_cart')
             cart_item.quantity += 1
         elif action == 'decrease' and cart_item.quantity > 1:
             cart_item.quantity -= 1
@@ -179,6 +218,7 @@ def update_cart(request, item_id):
             cart_item.delete()
 
     return redirect('view_cart')
+
 
 
 
@@ -216,6 +256,16 @@ def process_order(request):
         phone_number = request.POST.get('phone_number')
         email = request.POST.get('email')
         payment_method = request.POST.get('payment_method')
+
+        # Validation for zip code (6 digits)
+        if not re.match(r'^\d{6}$', zip_code):
+            messages.error(request, "Please enter a valid 6-digit pincode.")
+            return redirect('checkout')
+
+        # Validation for phone number (10 digits)
+        if not re.match(r'^\d{10}$', phone_number):
+            messages.error(request, "Please enter a valid 10-digit phone number.")
+            return redirect('checkout')
 
         # Calculate total amount based on cart items
         cart = Cart.objects.get(user=request.user)
@@ -292,9 +342,16 @@ def user_orders(request):
     return render(request, 'user_orders.html', {'orders': orders})
 
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import Profile
+from .forms import ProfileForm
+
 @login_required(login_url='login')
 def profile_view(request):
-    profile = request.user.profile
+    # Get or create the profile for the logged-in user
+    profile, created = Profile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
         profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
@@ -308,6 +365,7 @@ def profile_view(request):
         profile_form = ProfileForm(instance=profile)
 
     return render(request, 'profile.html', {'profile_form': profile_form})
+
 
 
 from django.utils.crypto import get_random_string

@@ -1,10 +1,12 @@
-<!-- cart.html -->
 {% extends 'base.html' %}
 {% load static %}
 
 {% block content %}
 <div class="container cart-container">
     <h1 class="text-center">Cart</h1>
+    
+    {% if cart_items %}
+    <!-- Table for displaying cart items -->
     <table class="table cart-table">
         <thead>
             <tr>
@@ -19,16 +21,24 @@
         <tbody>
             {% for item in cart_items %}
             <tr>
-                <td><img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" style="width: 80px; height: 80px; object-fit: cover;"></td>
+                <td>
+                    <img src="{{ item.product.image.url }}" 
+                         alt="{{ item.product.name }}" 
+                         style="width: 80px; height: 80px; object-fit: cover;">
+                </td>
                 <td>{{ item.product.name }}</td>
                 <td>${{ item.product.price }}</td>
                 <td>
                     <form method="post" action="{% url 'update_cart' item.id %}" class="quantity-form">
                         {% csrf_token %}
                         <div class="input-group">
-                            <button type="submit" name="action" value="decrease" class="btn btn-outline-secondary" {% if item.quantity <= 1 %}disabled{% endif %}>-</button>
-                            <input type="text" name="quantity" value="{{ item.quantity }}" readonly class="form-control text-center" style="max-width: 50px;">
-                            <button type="submit" name="action" value="increase" class="btn btn-outline-secondary">+</button>
+                            <button type="submit" name="action" value="decrease" 
+                                    class="btn btn-outline-secondary" 
+                                    {% if item.quantity <= 1 %}disabled{% endif %}>-</button>
+                            <input type="text" name="quantity" value="{{ item.quantity }}" readonly 
+                                   class="form-control text-center" style="max-width: 50px;">
+                            <button type="submit" name="action" value="increase" 
+                                    class="btn btn-outline-secondary">+</button>
                         </div>
                     </form>
                 </td>
@@ -43,10 +53,19 @@
             {% endfor %}
         </tbody>
     </table>
+    
+    <!-- Cart footer for total price and checkout button -->
     <div class="cart-footer m-2">
         <h4>Total: ${{ total_price }}</h4>
-        <!-- Updated Checkout Link -->
         <a href="{% url 'checkout' %}" class="btn btn-success">Proceed to Checkout</a>
     </div>
+    
+    {% else %}
+    <!-- Empty cart message -->
+    <div class="alert alert-warning text-center mt-4">
+        <h4>Your cart is empty!</h4>
+        <a href="{% url 'home' %}" class="btn btn-primary mt-2">Shop Now</a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -38,20 +38,33 @@
           <form method="post" action="{% url 'login' %}">
             {% csrf_token %}
             <div class="mb-3">
-              <label for="email" class="form-label">Email *</label>
-              <input type="email" name="email" id="email" class="form-control" placeholder="Yourname@gmail.com" required>
+                <label for="identifier" class="form-label">Email or Username *</label>
+                <input 
+                    type="text" 
+                    name="identifier" 
+                    id="identifier" 
+                    class="form-control" 
+                    placeholder="Enter your email or username" 
+                    required>
             </div>
             <div class="mb-3">
-              <label for="password" class="form-label">Password *</label>
-              <input type="password" name="password" id="password" class="form-control" placeholder="Enter your password" required>
+                <label for="password" class="form-label">Password *</label>
+                <input 
+                    type="password" 
+                    name="password" 
+                    id="password" 
+                    class="form-control" 
+                    placeholder="Enter your password" 
+                    required>
             </div>
             <div class="text-end mb-3">
-              <a href="{% url 'forgot_password' %}" class="text-decoration-none">Forgot Password?</a>
+                <a href="{% url 'forgot_password' %}" class="text-decoration-none">Forgot Password?</a>
             </div>
             <div class="d-grid">
-              <button type="submit" class="btn btn-dark">LOG IN</button>
+                <button type="submit" class="btn btn-dark">LOG IN</button>
             </div>
-          </form>
+        </form>
+        
 
           <div class="text-center mt-3">
             <p class="mb-0">Don’t have an account? <a href="{% url 'register' %}" class="text-dark fw-bold">Sign Up</a></p>
